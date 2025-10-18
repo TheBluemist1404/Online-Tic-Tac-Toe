@@ -1,91 +1,20 @@
 import { useCallback, useMemo, useState } from 'react'
+import { evaluateBoard } from '@/utils/evaluate-board';
+import type { Player, BoardMatrix, GameResult} from '@/types';
+import { BOARD_SIZE, PLAYERS } from '@/constants';
 
 import Cell from './Cell'
 
-type Player = 'X' | 'O'
-type CellValue = Player | null
-
-const BOARD_SIZE = 5
-const PLAYERS: readonly Player[] = ['X', 'O']
-
-type BoardMatrix = CellValue[][]
-
-interface GameResult {
-  winner: Player | null
-  winningLine: Array<[number, number]>
-}
 
 const createEmptyBoard = (): BoardMatrix =>
   Array.from({ length: BOARD_SIZE }, () =>
-    Array.from({ length: BOARD_SIZE }, () => null),
+    Array.from({ length: BOARD_SIZE }, () => 0),
   )
 
 const togglePlayer = (player: Player): Player =>{
   return player === PLAYERS[0] ? PLAYERS[1] : PLAYERS[0]
 }
-  
 
-const evaluateBoard = (board: BoardMatrix): GameResult | null => {
-  // Horizontal and vertical checks
-  for (let index = 0; index < BOARD_SIZE; index += 1) {
-    const rowSlice = board[index]
-    if (rowSlice.every((cell) => cell && cell === rowSlice[0])) {
-      return {
-        winner: rowSlice[0],
-        winningLine: rowSlice.map((_, col) => [index, col]),
-      }
-    }
-
-    const firstInColumn = board[0][index]
-    if (
-      firstInColumn &&
-      board.every((row) => row[index] && row[index] === firstInColumn)
-    ) {
-      return {
-        winner: firstInColumn,
-        winningLine: board.map((_, row) => [row, index]),
-      }
-    }
-  }
-
-  // Main diagonal top-left -> bottom-right
-  const diagonalMain = board.map((row, index) => row[index])
-  if (
-    diagonalMain[0] &&
-    diagonalMain.every((cell) => cell && cell === diagonalMain[0])
-  ) {
-    return {
-      winner: diagonalMain[0],
-      winningLine: diagonalMain.map((_, index) => [index, index]),
-    }
-  }
-
-  // Anti-diagonal top-right -> bottom-left
-  const diagonalAnti = board.map((row, index) => row[BOARD_SIZE - 1 - index])
-  if (
-    diagonalAnti[0] &&
-    diagonalAnti.every((cell) => cell && cell === diagonalAnti[0])
-  ) {
-    return {
-      winner: diagonalAnti[0],
-      winningLine: diagonalAnti.map((_, index) => [
-        index,
-        BOARD_SIZE - 1 - index,
-      ]),
-    }
-  }
-
-  const isDraw = board.every((row) => row.every((cell) => cell !== null))
-
-  if (isDraw) {
-    return {
-      winner: null,
-      winningLine: [],
-    }
-  }
-
-  return null
-}
 
 export default function Board() {
   const [board, setBoard] = useState<BoardMatrix>(() => createEmptyBoard())
@@ -102,12 +31,12 @@ export default function Board() {
 
   const handleCellSelect = useCallback(
     (row: number, col: number) => {
-      if (result || board[row][col] !== null) {
+      if (result) {
         return
       }
 
       const newBoard = [...board]
-      newBoard[row][col] = currentPlayer;
+      newBoard[row][col]++;
       setBoard(newBoard);
 
       const evaluation: GameResult | null = evaluateBoard(newBoard);
@@ -132,6 +61,7 @@ export default function Board() {
     setBoard(createEmptyBoard())
     setCurrentPlayer(PLAYERS[0])
     setResult(null)
+    setStatusLabel(`Player ${PLAYERS[0]}'s turn`)
   }
 
   return (
@@ -158,7 +88,6 @@ export default function Board() {
                 row={row}
                 col={col}
                 value={value}
-                disabled={Boolean(result) || value !== null}
                 isHighlighted={winningCells.has(key)}
                 onSelect={() => handleCellSelect(row, col)}
               />
