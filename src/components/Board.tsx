@@ -1,26 +1,36 @@
-import { useCallback, useMemo, useState } from 'react'
-import { evaluateBoard } from '@/utils/evaluate-board';
-import type { Player, BoardMatrix, GameResult} from '@/types';
-import { BOARD_SIZE, PLAYERS } from '@/constants';
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { evaluateBoard } from '@/utils/evaluate-board'
+import type { Player, BoardMatrix, GameResult } from '@/types'
+import { BOARD_SIZE, PLAYERS } from '@/constants'
+import { createEmptyBoard } from '@/utils/empty-board'
+import type { Socket } from 'socket.io-client'
 
 import Cell from './Cell'
 
-
-const createEmptyBoard = (): BoardMatrix =>
-  Array.from({ length: BOARD_SIZE }, () =>
-    Array.from({ length: BOARD_SIZE }, () => 0),
-  )
-
-const togglePlayer = (player: Player): Player =>{
+const togglePlayer = (player: Player): Player => {
   return player === PLAYERS[0] ? PLAYERS[1] : PLAYERS[0]
 }
 
+type BoardProps = {
+  socket: Socket | null
+  roomId: string
+  board: BoardMatrix
+  setBoard: React.Dispatch<React.SetStateAction<BoardMatrix>>
+}
 
-export default function Board() {
-  const [board, setBoard] = useState<BoardMatrix>(() => createEmptyBoard())
+export default function Board({ socket, roomId, board, setBoard }: BoardProps) {
+  
   const [currentPlayer, setCurrentPlayer] = useState<Player>(PLAYERS[0])
   const [result, setResult] = useState<GameResult | null>(null)
-  const [statusLabel, setStatusLabel] = useState<string>(`Player ${PLAYERS[0]}'s turn`)
+  const [statusLabel, setStatusLabel] = useState<string>(
+    `Player ${PLAYERS[0]}'s turn`,
+  )
+
+  useEffect(() => {
+    if (socket) {
+      console.log(`Socket ${socket?.id}`);
+    }
+  }, [socket])
 
   const winningCells = useMemo(() => {
     if (!result?.winningLine?.length) {
@@ -31,30 +41,31 @@ export default function Board() {
 
   const handleCellSelect = useCallback(
     (row: number, col: number) => {
-      if (result) {
+      if (!socket || result) {
         return
       }
 
       const newBoard = [...board]
-      newBoard[row][col]++;
-      setBoard(newBoard);
+      newBoard[row][col]++
+      setBoard(newBoard)
 
-      const evaluation: GameResult | null = evaluateBoard(newBoard);
+      socket.emit('game:move', { newBoard, roomId })
+
+      const evaluation: GameResult | null = evaluateBoard(newBoard)
 
       if (evaluation) {
-        setResult(evaluation);
+        setResult(evaluation)
         if (evaluation.winner) {
           setStatusLabel(`Player ${currentPlayer} has won`)
         } else {
           setStatusLabel("It's a draw")
         }
       } else {
-        setCurrentPlayer((cur) => togglePlayer(cur));
-        setStatusLabel(`Player ${togglePlayer(currentPlayer)}'s turn`);
-      }     
-      
+        setCurrentPlayer((cur) => togglePlayer(cur))
+        setStatusLabel(`Player ${togglePlayer(currentPlayer)}'s turn`)
+      }
     },
-    [board, currentPlayer, result],
+    [socket, board, currentPlayer, result],
   )
 
   const handleReplay = () => {

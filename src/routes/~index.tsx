@@ -1,15 +1,16 @@
 import { ChevronDown } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
   component: Homepage,
 })
 
 function Homepage() {
+  const navigate = useNavigate();
   const [isJoinOpen, setIsJoinOpen] = useState(false)
   const [roomCodeInput, setRoomCodeInput] = useState('')
-  const [generatedRoomCode, setGeneratedRoomCode] = useState<string | null>(null)
+  // const [generatedRoomCode, setGeneratedRoomCode] = useState<string | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
   const handleQuickPlay = () => {
@@ -26,6 +27,7 @@ function Homepage() {
     }
 
     setStatusMessage(`Attempting to join room ${trimmedCode}...`)
+    navigate({to: `/room/${trimmedCode}`})
   }
 
   const handleCreateRoom = async () => {
@@ -33,18 +35,10 @@ function Homepage() {
       typeof globalThis.crypto?.randomUUID === 'function'
         ? globalThis.crypto.randomUUID().slice(0, 8).toUpperCase()
         : Math.random().toString(36).slice(2, 10).toUpperCase()
-    setGeneratedRoomCode(newRoomCode)
-    setIsJoinOpen(true)
-
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(newRoomCode)
-      } else {
-        throw new Error('Clipboard API unavailable')
-      }
-      setStatusMessage('Room created! We copied the new ID to your clipboard.')
-    } catch {
-      setStatusMessage('Room created! Share the room ID shown below.')
+    // setGeneratedRoomCode(newRoomCode)
+    // setIsJoinOpen(true)
+    if (newRoomCode) {
+      navigate({to: `/room/${newRoomCode}`})
     }
   }
 
@@ -112,7 +106,7 @@ function Homepage() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-base font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
+                  className="w-full rounded-lg bg-indigo-600 px-4 py-3 text-base font-semibold text-white transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-indigo-400"
                 >
                   Join Room
                 </button>
@@ -126,13 +120,13 @@ function Homepage() {
                   onClick={handleCreateRoom}
                   className="w-full rounded-lg border border-dashed border-indigo-300 px-4 py-3 text-base font-semibold text-indigo-600 transition hover:border-indigo-400 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
                 >
-                  Create & Share Room ID
+                  Create Room
                 </button>
-                {generatedRoomCode && (
+                {/* {generatedRoomCode && (
                   <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-center font-mono text-lg font-semibold text-slate-800">
                     {generatedRoomCode}
                   </div>
-                )}
+                )} */}
               </div>
             </div>
           )}
