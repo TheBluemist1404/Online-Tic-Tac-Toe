@@ -1,36 +1,51 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { evaluateBoard } from '@/utils/evaluate-board'
 import type { Player, BoardMatrix, GameResult } from '@/types'
-import { BOARD_SIZE, PLAYERS } from '@/constants'
-import { createEmptyBoard } from '@/utils/empty-board'
+import { BOARD_SIZE } from '@/constants'
 import type { Socket } from 'socket.io-client'
 
 import Cell from './Cell'
-
-const togglePlayer = (player: Player): Player => {
-  return player === PLAYERS[0] ? PLAYERS[1] : PLAYERS[0]
-}
 
 type BoardProps = {
   socket: Socket | null
   roomId: string
   board: BoardMatrix
-  setBoard: React.Dispatch<React.SetStateAction<BoardMatrix>>
+  currentPlayer: Player | null
+  setCurrentPlayer: React.Dispatch<React.SetStateAction<Player | null>>
+  result: GameResult | null
+  gameStart: boolean
+  handleReplay: () => void
 }
 
-export default function Board({ socket, roomId, board, setBoard }: BoardProps) {
-  
-  const [currentPlayer, setCurrentPlayer] = useState<Player>(PLAYERS[0])
-  const [result, setResult] = useState<GameResult | null>(null)
+export default function Board({
+  socket,
+  roomId,
+  board,
+  currentPlayer,
+  result,
+  gameStart,
+  handleReplay
+}: BoardProps) {
   const [statusLabel, setStatusLabel] = useState<string>(
-    `Player ${PLAYERS[0]}'s turn`,
+    'Waiting for opponent...',
   )
 
   useEffect(() => {
     if (socket) {
-      console.log(`Socket ${socket?.id}`);
+      console.log(`Socket ${socket?.id}`)
+
+      socket.on("game:reset", ()=> {
+        setStatusLabel('The game begins!')
+      })
     }
   }, [socket])
+
+  useEffect(() => {
+    if (gameStart) {
+      setStatusLabel('The game begins!')
+    } else {
+      setStatusLabel('Waiting for opponent...')
+    }
+  }, [gameStart])
 
   const winningCells = useMemo(() => {
     if (!result?.winningLine?.length) {
@@ -41,39 +56,47 @@ export default function Board({ socket, roomId, board, setBoard }: BoardProps) {
 
   const handleCellSelect = useCallback(
     (row: number, col: number) => {
-      if (!socket || result) {
+      if (!socket || result || !gameStart) {
         return
       }
+      console.log('make move: ', row, col)
+      socket.emit('game:move', { row, col, roomId })
 
-      const newBoard = [...board]
-      newBoard[row][col]++
-      setBoard(newBoard)
+      // const newBoard = [...board]
+      // newBoard[row][col]++
+      // setBoard(newBoard)
 
-      socket.emit('game:move', { newBoard, roomId })
+      // socket.emit('game:move', { newBoard, roomId })
 
-      const evaluation: GameResult | null = evaluateBoard(newBoard)
+      // const evaluation: GameResult | null = evaluateBoard(newBoard)
 
-      if (evaluation) {
-        setResult(evaluation)
-        if (evaluation.winner) {
-          setStatusLabel(`Player ${currentPlayer} has won`)
-        } else {
-          setStatusLabel("It's a draw")
-        }
-      } else {
-        setCurrentPlayer((cur) => togglePlayer(cur))
-        setStatusLabel(`Player ${togglePlayer(currentPlayer)}'s turn`)
-      }
+      // if (evaluation) {
+      //   console.log(evaluation)
+      //   socket.emit("game:result", { result: evaluation, roomId })
+      // }
     },
-    [socket, board, currentPlayer, result],
+    [socket, board, currentPlayer, result, gameStart],
   )
 
-  const handleReplay = () => {
-    setBoard(createEmptyBoard())
-    setCurrentPlayer(PLAYERS[0])
-    setResult(null)
-    setStatusLabel(`Player ${PLAYERS[0]}'s turn`)
-  }
+  useEffect(() => {
+    if (result) {
+      console.log('Game result: ', result)
+      if (result.winner) {
+        if (result.winner === currentPlayer) {
+          setStatusLabel('You win')
+        } else {
+          setStatusLabel('You lose')
+        }
+      } else {
+        setStatusLabel("It's a draw") // Not possible 
+      }
+    }
+  }, [result])
+
+  // const handleReplay = () => {
+  //   setBoard(createEmptyBoard())
+  //   setResult(null)
+  // }
 
   return (
     <section className="flex flex-col items-center gap-6 rounded-3xl border border-white/20 bg-white/80 p-6 md:p-8 shadow-2xl backdrop-blur">
@@ -83,6 +106,8 @@ export default function Board({ socket, roomId, board, setBoard }: BoardProps) {
         </p>
         <h2 className="text-3xl font-extrabold text-slate-900">Board</h2>
       </header>
+
+      <p>You are {currentPlayer} player</p>
 
       <div
         className={`grid gap-2 md:gap-3`}
@@ -112,8 +137,8 @@ export default function Board({ socket, roomId, board, setBoard }: BoardProps) {
         {result && (
           <button
             type="button"
-            onClick={handleReplay}
-            className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
+            onClick={() => handleReplay()}
+            className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-indigo-400"
           >
             Play Again
           </button>

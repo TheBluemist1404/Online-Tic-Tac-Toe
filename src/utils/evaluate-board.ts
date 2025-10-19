@@ -1,7 +1,7 @@
 import type { BoardMatrix, GameResult } from "@/types"
 import { BOARD_SIZE } from "@/constants"
 
-export const evaluateBoard = (board: BoardMatrix): GameResult | null => {
+export default function evaluateBoard(board: BoardMatrix): GameResult | null {
   // Horizontal and vertical checks
   for (let index = 0; index < BOARD_SIZE; index++) {
     const rowSlice = board[index]
