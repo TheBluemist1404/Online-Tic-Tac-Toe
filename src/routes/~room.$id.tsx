@@ -6,7 +6,7 @@ import type { Socket } from 'socket.io-client'
 import type { BoardMatrix, Player, GameResult } from '@/types'
 import { PLAYERS } from '@/constants'
 import { createEmptyBoard } from '@/utils/empty-board'
-import { evaluateBoard } from '@/utils/evaluate-board'
+import evaluateBoard from '@/utils/evaluate-board'
 
 export const Route = createFileRoute('/room/$id')({
   component: RouteComponent,
@@ -27,19 +27,23 @@ function RouteComponent() {
   async function handleCopyCode() {
     try {
       if (generatedRoomCode && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(generatedRoomCode)
+        await navigator.clipboard.writeText(generatedRoomCode);
       } else {
-        throw new Error('Clipboard API unavailable')
+        throw new Error('Clipboard API unavailable');
       }
-      console.log('Room created! We copied the new ID to your clipboard.')
+      console.log('Room created! We copied the new ID to your clipboard.');
     } catch {
-      console.log('Room created! Share the room ID shown below.')
+      console.log('Room created! Share the room ID shown below.');
     }
   }
 
+  function resetGame() {
+    socket?.emit("game:reset", {roomId})
+  }
+
   useEffect(() => {
-    console.log(roomId)
-    setGeneratedRoomCode(roomId)
+    console.log(roomId);
+    setGeneratedRoomCode(roomId);
   }, [roomId])
 
   useEffect(() => {
@@ -47,8 +51,8 @@ function RouteComponent() {
     const socket = io(import.meta.env.VITE_APP_API_URL as string)
 
     socket.on('connect', () => {
-      console.log('✅ Connected to server')
-      setSocket(socket)
+      console.log('✅ Connected to server');
+      setSocket(socket);
 
       if (!roomId) return
       socket.emit(
@@ -56,29 +60,34 @@ function RouteComponent() {
         { roomId },
         (ack: { ok: boolean; role?: Player; error?: string }) => {
           if (!ack?.ok) {
-            console.warn('Cannot join room:', ack?.error)
-            navigate({ to: '/' })
+            console.warn('Cannot join room:', ack?.error);
+            navigate({ to: '/' });
             // optional: navigate away or show toast
             return
           }
-          console.log(ack)
+          console.log(ack);
           // Save role in state/context so Board can use it
-          setCurrentPlayer(ack.role!)
+          setCurrentPlayer(ack.role!);
         },
       )
     })
 
-    socket.on('start-game', () => {
-      console.log('The game begins!')
-      setGameStart(true)
+    socket.on("game:reset", ()=> {
+      console.log("reset game")
+      setBoard((_) => createEmptyBoard());      
+      setResult(null);
+    })
+
+    socket.on('game:start', () => {
+      console.log('The game begins!');
+      setGameStart(true);
     })
 
     socket.on('single-room', () => {
-      console.log('You are the only player left in the room. Game reset...')
-      setBoard((_) => createEmptyBoard())
-      setCurrentPlayer(PLAYERS[0])
-      setGameStart(false)
-      setResult(null)
+      console.log('You are the only player left in the room. Game reset...');
+      setCurrentPlayer(PLAYERS[0]);
+      setGameStart(false);
+      resetGame();
     })
 
     socket.on('game:move', ({ row, col }) => {
@@ -133,12 +142,11 @@ function RouteComponent() {
         socket={socket}
         roomId={roomId}
         board={board}
-        setBoard={setBoard}
         currentPlayer={currentPlayer}
         setCurrentPlayer={setCurrentPlayer}
         result={result}
-        setResult={setResult}
         gameStart={gameStart}
+        handleReplay={resetGame}
       />
     </div>
   )
