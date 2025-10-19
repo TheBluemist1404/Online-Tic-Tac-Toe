@@ -1,31 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { evaluateBoard } from '@/utils/evaluate-board'
 import type { Player, BoardMatrix, GameResult } from '@/types'
-import { BOARD_SIZE, PLAYERS } from '@/constants'
+import { BOARD_SIZE } from '@/constants'
 import { createEmptyBoard } from '@/utils/empty-board'
 import type { Socket } from 'socket.io-client'
 
 import Cell from './Cell'
-
-const togglePlayer = (player: Player): Player => {
-  return player === PLAYERS[0] ? PLAYERS[1] : PLAYERS[0]
-}
 
 type BoardProps = {
   socket: Socket | null
   roomId: string
   board: BoardMatrix
   setBoard: React.Dispatch<React.SetStateAction<BoardMatrix>>
-  currentPlayer: Player
-  setCurrentPlayer: React.Dispatch<React.SetStateAction<Player>>
+  currentPlayer: Player | null
+  setCurrentPlayer: React.Dispatch<React.SetStateAction<Player | null>>
   result: GameResult | null
   setResult: React.Dispatch<React.SetStateAction<GameResult | null>>
+  gameStart: boolean
 }
 
-export default function Board({ socket, roomId, board, setBoard, currentPlayer, result, setResult }: BoardProps) {
-  const [statusLabel, setStatusLabel] = useState<string>(
-    `You are ${currentPlayer} player`,
-  )
+export default function Board({ socket, roomId, board, setBoard, currentPlayer, result, setResult, gameStart }: BoardProps) {
+  const [statusLabel, setStatusLabel] = useState<string>("Waiting for opponent...")
 
   useEffect(() => {
     if (socket) {
@@ -34,8 +29,12 @@ export default function Board({ socket, roomId, board, setBoard, currentPlayer, 
   }, [socket])
 
   useEffect(()=> {
-    setStatusLabel(`You are ${currentPlayer} player`)
-  }, [currentPlayer])
+    if (gameStart) {
+      setStatusLabel("The game begins!");
+    } else {
+      setStatusLabel("Waiting for opponent...");
+    }
+  }, [gameStart])
 
   const winningCells = useMemo(() => {
     if (!result?.winningLine?.length) {
@@ -46,7 +45,7 @@ export default function Board({ socket, roomId, board, setBoard, currentPlayer, 
 
   const handleCellSelect = useCallback(
     (row: number, col: number) => {
-      if (!socket || result) {
+      if (!socket || result || !gameStart) {
         return
       }
 
@@ -64,7 +63,7 @@ export default function Board({ socket, roomId, board, setBoard, currentPlayer, 
         // setResult(evaluation)        
       }
     },
-    [socket, board, currentPlayer, result],
+    [socket, board, currentPlayer, result, gameStart],
   )
 
   useEffect(()=> {
@@ -91,6 +90,8 @@ export default function Board({ socket, roomId, board, setBoard, currentPlayer, 
         </p>
         <h2 className="text-3xl font-extrabold text-slate-900">Board</h2>
       </header>
+
+      <p>You are {currentPlayer} player</p>
 
       <div
         className={`grid gap-2 md:gap-3`}

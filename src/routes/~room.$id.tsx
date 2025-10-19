@@ -12,15 +12,14 @@ export const Route = createFileRoute('/room/$id')({
 })
 
 function RouteComponent() {
-  const navigate = useNavigate()
-  const [currentPlayer, setCurrentPlayer] = useState<Player>(PLAYERS[0])
-  const [board, setBoard] = useState<BoardMatrix>(() => createEmptyBoard())
-  const [result, setResult] = useState<GameResult | null>(null)
-  const [generatedRoomCode, setGeneratedRoomCode] = useState<string | null>(
-    null,
-  )
-  const [socket, setSocket] = useState<Socket | null>(null)
-  const { id: roomId } = Route.useParams()
+  const navigate = useNavigate();
+  const [gameStart, setGameStart] = useState<boolean>(false);
+  const [currentPlayer, setCurrentPlayer] = useState<Player| null>(null);
+  const [board, setBoard] = useState<BoardMatrix>(() => createEmptyBoard());
+  const [result, setResult] = useState<GameResult | null>(null);
+  const [generatedRoomCode, setGeneratedRoomCode] = useState<string | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const { id: roomId } = Route.useParams();
 
   async function handleCopyCode() {
     try {
@@ -66,6 +65,17 @@ function RouteComponent() {
       )
     })
 
+    socket.on('start-game', () => {
+      console.log("The game begins!");
+      setGameStart(true)
+    })
+
+    socket.on("single-room", () => {
+      console.log("You are the only player left in the room");
+      setCurrentPlayer(PLAYERS[0]);
+      setGameStart(false)
+    })
+
     socket.on('game:move', (updatedBoard) => {
       setBoard(updatedBoard)
     })
@@ -74,7 +84,10 @@ function RouteComponent() {
       setResult(result)
     })
 
-    socket.on('disconnect', () => console.log('❌ Disconnected from server'))
+    socket.on('disconnect', () => {
+      socket.emit("room:leave", {roomId})
+      console.log('❌ Disconnected from server')
+    })
 
     // cleanup on unmount
     return () => {
@@ -104,6 +117,7 @@ function RouteComponent() {
         setCurrentPlayer={setCurrentPlayer}
         result={result}
         setResult={setResult}
+        gameStart={gameStart}
       />
     </div>
   )
