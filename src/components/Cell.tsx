@@ -8,7 +8,6 @@ export interface CellProps {
   row: number
   col: number
   value: ReactNode
-  disabled: boolean
   isHighlighted: boolean
   onSelect: MouseEventHandler<HTMLButtonElement>
 }
@@ -19,7 +18,6 @@ export interface CellProps {
  */
 export default function Cell({
   value,
-  disabled,
   isHighlighted,
   onSelect,
 }: CellProps) {
@@ -27,13 +25,11 @@ export default function Cell({
     <button
       type="button"
       onClick={onSelect}
-      disabled={disabled}
-      className={`flex size-10 md:size-16 items-center justify-center rounded-xl border text-2xl font-bold transition ${
+      className={`flex size-10 md:size-16 items-center justify-center rounded-xl border text-xl md:text-2xl font-bold transition ${
         isHighlighted
           ? 'border-indigo-500 bg-indigo-100 text-indigo-700'
           : `border-slate-200 bg-neutral-100 ${value !== null && "bg-neutral-300"} text-slate-700 hover:border-indigo-400 hover:bg-indigo-50`
-      }  
-      ${disabled ? 'cursor-not-allowed opacity-60 bg-red' : 'cursor-pointer'}`}
+      }`}
     >
       {value}
     </button>
