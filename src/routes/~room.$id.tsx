@@ -1,25 +1,28 @@
 import { io } from 'socket.io-client'
 import { useState, useEffect } from 'react'
 import Board from '@/components/Board'
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import type { Socket } from 'socket.io-client'
 import type { BoardMatrix, Player, GameResult } from '@/types'
 import { PLAYERS } from '@/constants'
 import { createEmptyBoard } from '@/utils/empty-board'
+import { evaluateBoard } from '@/utils/evaluate-board'
 
 export const Route = createFileRoute('/room/$id')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const navigate = useNavigate();
-  const [gameStart, setGameStart] = useState<boolean>(false);
-  const [currentPlayer, setCurrentPlayer] = useState<Player| null>(null);
-  const [board, setBoard] = useState<BoardMatrix>(() => createEmptyBoard());
-  const [result, setResult] = useState<GameResult | null>(null);
-  const [generatedRoomCode, setGeneratedRoomCode] = useState<string | null>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const { id: roomId } = Route.useParams();
+  const navigate = useNavigate()
+  const [gameStart, setGameStart] = useState<boolean>(false)
+  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null)
+  const [board, setBoard] = useState<BoardMatrix>(() => createEmptyBoard())
+  const [result, setResult] = useState<GameResult | null>(null)
+  const [generatedRoomCode, setGeneratedRoomCode] = useState<string | null>(
+    null,
+  )
+  const [socket, setSocket] = useState<Socket | null>(null)
+  const { id: roomId } = Route.useParams()
 
   async function handleCopyCode() {
     try {
@@ -54,38 +57,56 @@ function RouteComponent() {
         (ack: { ok: boolean; role?: Player; error?: string }) => {
           if (!ack?.ok) {
             console.warn('Cannot join room:', ack?.error)
-            navigate({to: '/'})
+            navigate({ to: '/' })
             // optional: navigate away or show toast
             return
           }
           console.log(ack)
           // Save role in state/context so Board can use it
-          setCurrentPlayer(ack.role!);
+          setCurrentPlayer(ack.role!)
         },
       )
     })
 
     socket.on('start-game', () => {
-      console.log("The game begins!");
+      console.log('The game begins!')
       setGameStart(true)
     })
 
-    socket.on("single-room", () => {
-      console.log("You are the only player left in the room");
-      setCurrentPlayer(PLAYERS[0]);
+    socket.on('single-room', () => {
+      console.log('You are the only player left in the room. Game reset...')
+      setBoard((_) => createEmptyBoard())
+      setCurrentPlayer(PLAYERS[0])
       setGameStart(false)
+      setResult(null)
     })
 
-    socket.on('game:move', (updatedBoard) => {
-      setBoard(updatedBoard)
+    socket.on('game:move', ({ row, col }) => {
+      // console.log(row, col)
+      let next: BoardMatrix
+      let evaluation: GameResult | null = null
+
+      // Looks complicating but it is just how setState should be
+      setBoard((prev) => {
+        const rowCopy = prev[row].slice();
+        rowCopy[col] = (rowCopy[col] ?? 0) + 1;
+        next = prev.slice();
+        next[row] = rowCopy;
+      
+        evaluation = evaluateBoard(next);
+        if (evaluation) {
+          socket.emit('game:result', { result: evaluation, roomId });
+        }
+        return next;
+      })
     })
 
-    socket.on('game:result', (result)=> {
+    socket.on('game:result', (result) => {
       setResult(result)
     })
 
     socket.on('disconnect', () => {
-      socket.emit("room:leave", {roomId})
+      socket.emit('room:leave', { roomId })
       console.log('❌ Disconnected from server')
     })
 

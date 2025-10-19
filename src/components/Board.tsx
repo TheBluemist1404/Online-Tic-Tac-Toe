@@ -48,20 +48,21 @@ export default function Board({ socket, roomId, board, setBoard, currentPlayer, 
       if (!socket || result || !gameStart) {
         return
       }
+      console.log("make move: ", row, col);
+      socket.emit('game:move', { row, col, roomId })
 
-      const newBoard = [...board]
-      newBoard[row][col]++
-      setBoard(newBoard)
+      // const newBoard = [...board]
+      // newBoard[row][col]++
+      // setBoard(newBoard)
 
-      socket.emit('game:move', { newBoard, roomId })
+      // socket.emit('game:move', { newBoard, roomId })
 
-      const evaluation: GameResult | null = evaluateBoard(newBoard)
+      // const evaluation: GameResult | null = evaluateBoard(newBoard)
 
-      if (evaluation) {
-        console.log(evaluation)
-        socket.emit("game:result", { result: evaluation, roomId })
-        // setResult(evaluation)        
-      }
+      // if (evaluation) {
+      //   console.log(evaluation)
+      //   socket.emit("game:result", { result: evaluation, roomId })
+      // }
     },
     [socket, board, currentPlayer, result, gameStart],
   )
@@ -122,7 +123,7 @@ export default function Board({ socket, roomId, board, setBoard, currentPlayer, 
           <button
             type="button"
             onClick={handleReplay}
-            className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
+            className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow transition hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-indigo-400"
           >
             Play Again
           </button>
