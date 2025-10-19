@@ -16,14 +16,15 @@ type BoardProps = {
   roomId: string
   board: BoardMatrix
   setBoard: React.Dispatch<React.SetStateAction<BoardMatrix>>
+  currentPlayer: Player
+  setCurrentPlayer: React.Dispatch<React.SetStateAction<Player>>
+  result: GameResult | null
+  setResult: React.Dispatch<React.SetStateAction<GameResult | null>>
 }
 
-export default function Board({ socket, roomId, board, setBoard }: BoardProps) {
-  
-  const [currentPlayer, setCurrentPlayer] = useState<Player>(PLAYERS[0])
-  const [result, setResult] = useState<GameResult | null>(null)
+export default function Board({ socket, roomId, board, setBoard, currentPlayer, result, setResult }: BoardProps) {
   const [statusLabel, setStatusLabel] = useState<string>(
-    `Player ${PLAYERS[0]}'s turn`,
+    `You are ${currentPlayer} player`,
   )
 
   useEffect(() => {
@@ -31,6 +32,10 @@ export default function Board({ socket, roomId, board, setBoard }: BoardProps) {
       console.log(`Socket ${socket?.id}`);
     }
   }, [socket])
+
+  useEffect(()=> {
+    setStatusLabel(`You are ${currentPlayer} player`)
+  }, [currentPlayer])
 
   const winningCells = useMemo(() => {
     if (!result?.winningLine?.length) {
@@ -54,25 +59,28 @@ export default function Board({ socket, roomId, board, setBoard }: BoardProps) {
       const evaluation: GameResult | null = evaluateBoard(newBoard)
 
       if (evaluation) {
-        setResult(evaluation)
-        if (evaluation.winner) {
-          setStatusLabel(`Player ${currentPlayer} has won`)
-        } else {
-          setStatusLabel("It's a draw")
-        }
-      } else {
-        setCurrentPlayer((cur) => togglePlayer(cur))
-        setStatusLabel(`Player ${togglePlayer(currentPlayer)}'s turn`)
+        console.log(evaluation)
+        socket.emit("game:result", { result: evaluation, roomId })
+        // setResult(evaluation)        
       }
     },
     [socket, board, currentPlayer, result],
   )
 
+  useEffect(()=> {
+    if (result) {
+      console.log("Game result: ", result)
+      if (result.winner) {
+          setStatusLabel(`Player ${result.winner} has won`)
+        } else {
+          setStatusLabel("It's a draw")
+        }
+    }
+  }, [result])
+
   const handleReplay = () => {
     setBoard(createEmptyBoard())
-    setCurrentPlayer(PLAYERS[0])
     setResult(null)
-    setStatusLabel(`Player ${PLAYERS[0]}'s turn`)
   }
 
   return (

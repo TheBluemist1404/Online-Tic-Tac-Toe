@@ -15,6 +15,15 @@ function Homepage() {
 
   const handleQuickPlay = () => {
     setStatusMessage('Quick Play matchmaking is coming soon.')
+    // const newRoomCode =
+    //   typeof globalThis.crypto?.randomUUID === 'function'
+    //     ? globalThis.crypto.randomUUID().slice(0, 8).toUpperCase()
+    //     : Math.random().toString(36).slice(2, 10).toUpperCase()
+    // // setGeneratedRoomCode(newRoomCode)
+    // // setIsJoinOpen(true)
+    // if (newRoomCode) {
+    //   navigate({to: `/room/${newRoomCode}`})
+    // }
   }
 
   const handleJoinSubmit = (event: FormEvent<HTMLFormElement>) => {
